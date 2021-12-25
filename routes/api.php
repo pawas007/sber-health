@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\LogoutTokenController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\VerificationController;
+use App\Http\Controllers\TestRoute;
 
 
 /*
@@ -31,13 +32,18 @@ Route::post('login', [LoginController::class, 'login']);
 Route::post('logout', [LogoutTokenController::class, 'logout']);
 Route::post('password/forgot', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
 Route::post('password/reset', [ResetPasswordController::class, 'reset']);
+Route::post('phone/verify', [VerificationController::class, 'phoneVerification']);
 Route::get('email/verify/{id}', [VerificationController::class, 'verify'])->name('verification.verify')->middleware(['throttle:6,1']);
 Route::post('email/resend', [VerificationController::class, 'resend'])->name('verification.resend');
-//auth:sanctum guard
+//auth:sanctum guard 'verified'
 
-Route::middleware(['verified','auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('auth-user', [UserController::class, 'authUser']);
     Route::post('logout', [LogoutTokenController::class, 'logout']);
-
-
 });
+
+
+Route::middleware(['verifiedPhone','auth:sanctum'])->group(function () {
+    Route::get('verified-test', [TestRoute::class,'index'] );
+});
+

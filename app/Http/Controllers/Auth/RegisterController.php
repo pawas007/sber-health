@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use App\Models\User;
-use Illuminate\Foundation\Auth\RegistersUsers;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Validator;
+use App\Services\SmsVerifications;
 
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use App\Services\CodeGenerator;
+use Illuminate\Support\Facades\DB;
+use App\Traits\RegisterUser;
 class RegisterController extends Controller
 {
     /*
@@ -23,8 +24,8 @@ class RegisterController extends Controller
     | provide this functionality without requiring any additional code.
     |
     */
+use RegisterUser;
 
-    use RegistersUsers;
 
     /**
      * Where to redirect users after registration.
@@ -55,6 +56,7 @@ class RegisterController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'phone' => ['required', 'numeric'],
         ]);
     }
 
@@ -67,13 +69,28 @@ class RegisterController extends Controller
     protected function create(array $data)
     {
         try {
-            $user =  User::create([
+            DB::beginTransaction();
+            $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
+                'phone' => $data['phone'],
             ]);
+
+
+            $smsCode = CodeGenerator::generateCode();
+            DB::table('sms_verification_code')
+                ->insert([
+                    'code' => Hash::make($smsCode),
+                    'user_id' => $user->id
+                ]);
+
+            new SmsVerifications($user->phone, $smsCode);
+
+            DB::commit();
             return $user;
         } catch (Exception $e) {
+            DB::rollBack();
             return $e->getMessage();
         }
     }
